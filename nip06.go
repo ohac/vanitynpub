@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"hash"
 	"math/big"
@@ -147,19 +148,33 @@ func mining(seed []byte, thread uint32, lenckeymax int, filter1, filter2 byte) e
 }
 
 func main() {
-	words, _ := nip06.GenerateSeedWords()
+	testvectors := "leader monkey parrot ring guide accident before fence cannon height naive bean"
 
-	// test vectors
-	words = "leader monkey parrot ring guide accident before fence cannon height naive bean"
+	wordsp := flag.String("s", testvectors, "words")
 
-	fmt.Println(words)
+	// default: npub10hac
+	lenckeymaxp := flag.Int("lenckeymaxp", 32, "30 or 31 or 32")
+	verbose := flag.Bool("v", false, "verbose")
+	filter1p := flag.Int("f", 125, "filter1")
+	filter2p := flag.Int("g", 251, "filter2")
+	genseed := flag.Bool("S", false, "generate seed words")
+
+	flag.Parse()
+
+	words := *wordsp
+
+	if *genseed {
+		words, _ = nip06.GenerateSeedWords()
+	}
+	if *genseed || *verbose {
+		fmt.Println(words)
+	}
 	seed := nip06.SeedFromWords(words)
 	offset := uint32(7)
 
-	// npub10hac
-	lenckeymax := 32 // TODO or 30 or 31
-	filter1 := byte(125)
-	filter2 := byte(251)
+	lenckeymax := *lenckeymaxp
+	filter1 := byte(*filter1p)
+	filter2 := byte(*filter2p)
 
 	cores := 6
 
