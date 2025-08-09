@@ -90,7 +90,7 @@ func newChildKey(data []byte, key1Int, key2Int *big.Int,
 }
 
 func mining(seed []byte, thread uint32, lenckeymax int,
-	filter1, filter2 byte, target string) error {
+	filter1, filter2 byte, target string, usefilter bool) error {
 	key, err := bip32.NewMasterKey(seed)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func mining(seed []byte, thread uint32, lenckeymax int,
 		hmac.Reset()
 		ckey = newChildKey(data, &key1Int, &key2Int, next, i, hmac, n)
 		lenckey := len(ckey)
-		if lenckey < lenckeymax {
+		if usefilter && lenckey < lenckeymax {
 			continue
 		}
 		privKey := secp.PrivKeyFromBytes(ckey)
@@ -133,7 +133,7 @@ func mining(seed []byte, thread uint32, lenckeymax int,
 		schn := pk.SerializeCompressed()
 		schn = schn[1:]
 
-		if schn[0] == filter1 && schn[1] == filter2 {
+		if !usefilter || (schn[0] == filter1 && schn[1] == filter2) {
 			npub := hex.EncodeToString(schn)
 			npubs, _ := nip19.EncodePublicKey(npub)
 			if npubs[:9] == target {
@@ -155,12 +155,14 @@ func main() {
 
 	// default: npub10hac
 	lenckeymaxp := flag.Int("L", 32, "30 or 31 or 32")
-	coresp := flag.Int("c", 6, "cores")
-	verbose := flag.Bool("v", false, "verbose")
 	filter1p := flag.Int("f", 125, "filter1")
 	filter2p := flag.Int("g", 251, "filter2")
-	genseed := flag.Bool("S", false, "generate seed words")
 	targetp := flag.String("t", "npub10hac", "target string")
+	usefilter := flag.Bool("u", false, "use lenckeymax, filter1 and 2")
+
+	coresp := flag.Int("c", 6, "cores")
+	verbose := flag.Bool("v", false, "verbose")
+	genseed := flag.Bool("S", false, "generate seed words")
 
 	flag.Parse()
 
@@ -184,7 +186,8 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(cores)
 	for i := 0; i < cores; i++ {
-		go mining(seed, offset+1+uint32(i), lenckeymax, filter1, filter2, *targetp)
+		go mining(seed, offset+1+uint32(i), lenckeymax, filter1, filter2,
+			*targetp, *usefilter)
 	}
 	wg.Wait()
 }
